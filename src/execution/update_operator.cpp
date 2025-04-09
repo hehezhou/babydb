@@ -45,6 +45,8 @@ OperatorState UpdateOperator::Next(Chunk &) {
     if (table.GetIndex() != INVALID_NAME) {
         index = &exec_ctx_.catalog_.FetchIndex(table.GetIndex());
         index_key_attr = table.schema_.GetKeyAttr(index->key_name_);
+    } else {
+        throw std::logic_error("Disallowed in Project 2");
     }
 
     Chunk update_chunk;
@@ -59,15 +61,14 @@ OperatorState UpdateOperator::Next(Chunk &) {
     // First delete, then insert
     auto write_guard = table.GetWriteTableGuard();
     for (auto &data : update_chunk) {
-        DeleteRow(write_guard, data.second);
+        B_ASSERT(data.second != INVALID_ID);
+        auto &tuple = write_guard.Rows()[data.second].tuple_;
+        auto key = tuple.KeyFromTuple(index_key_attr);
+        DeleteRow(write_guard, data.second, index, key, exec_ctx_.txn_);
     }
     for (auto &data : update_chunk) {
-        if (index != nullptr) {
-            auto key = data.first.KeyFromTuple(index_key_attr);
-            InsertRowWithIndex(write_guard, std::move(data.first), index, key);
-        } else {
-            InsertRowWoIndex(write_guard, std::move(data.first));
-        }
+        auto key = data.first.KeyFromTuple(index_key_attr);
+        InsertRow(write_guard, std::move(data.first), index, key, exec_ctx_.txn_);
     }
 
     return EXHAUSETED;

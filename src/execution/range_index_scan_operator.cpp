@@ -23,7 +23,7 @@ OperatorState RangeIndexScanOperator::Next(Chunk &output_chunk) {
         results_scanned_ = true;
 
         auto &index = dynamic_cast<RangeIndex&>(exec_ctx_.catalog_.FetchIndex(index_name_));
-        index.ScanRange(range_, row_ids_);
+        index.ScanRange(range_, row_ids_, exec_ctx_.txn_);
         next_ite_ = row_ids_.begin();
     }
 
@@ -36,9 +36,6 @@ OperatorState RangeIndexScanOperator::Next(Chunk &output_chunk) {
         next_ite_++;
 
         auto& [tuple, meta] = read_guard.Rows()[row_id];
-        if (meta.is_deleted_) {
-            continue;
-        }
         output_chunk.emplace_back(tuple.KeysFromTuple(key_attrs), row_id);
     }
 

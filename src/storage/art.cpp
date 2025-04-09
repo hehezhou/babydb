@@ -714,21 +714,16 @@ ArtIndex::ArtIndex(const std::string &name, Table &table, const std::string &key
     : RangeIndex(name, table, key_name), art_tree_(std::make_unique<ArtTree>()) {
     auto read_guard = table.GetReadTableGuard();
     auto &rows = read_guard.Rows();
-    auto key_attr = table.schema_.GetKeyAttr(key_name);
-    for (idx_t row_id = 0; row_id < rows.size(); row_id++) {
-        auto &row = rows[row_id];
-        if (!row.tuple_meta_.is_deleted_) {
-            data_t key = row.tuple_.KeyFromTuple(key_attr);
-            InsertEntry(key, row_id);
-        }
+    if (!rows.empty()) {
+        throw std::logic_error("Index can be only built on an empty table");
     }
 }
 
 ArtIndex::~ArtIndex() {}
 
-void ArtIndex::InsertEntry(const data_t &key, idx_t row_id, idx_t start_ts) {
+void ArtIndex::InsertEntry(const data_t &key, idx_t row_id, Transaction &txn) {
     // P1 TODO: Add ts support
-    if (LookupKey(key) != INVALID_ID) {
+    if (LookupKey(key, txn) != INVALID_ID) {
         throw std::logic_error("duplicated key");
     }
     key_t keyBytes;
@@ -736,14 +731,7 @@ void ArtIndex::InsertEntry(const data_t &key, idx_t row_id, idx_t start_ts) {
     insert(art_tree_->root_, &art_tree_->root_, keyBytes, 0, key);
 }
 
-void ArtIndex::EraseEntry(const data_t &key) {
-    // P1 TODO: Add ts support
-    key_t keyBytes;
-    loadKey(key, keyBytes);
-    erase(art_tree_->root_, &art_tree_->root_, keyBytes, 0);
-}
-
-idx_t ArtIndex::LookupKey(const data_t &key, idx_t query_ts) {
+idx_t ArtIndex::LookupKey(const data_t &key, Transaction &txn) {
     // P1 TODO: This version returns the original key, change it to return the rowid & Add ts support
     key_t keyBytes;
     loadKey(key, keyBytes);
@@ -754,7 +742,7 @@ idx_t ArtIndex::LookupKey(const data_t &key, idx_t query_ts) {
     return static_cast<idx_t>(leaf.AsData());
 }
 
-void ArtIndex::ScanRange(const RangeInfo &range, std::vector<idx_t> &row_ids, idx_t query_ts) {
+void ArtIndex::ScanRange(const RangeInfo &range, std::vector<idx_t> &row_ids, Transaction &txn) {
     // P1 TODO: Implement rangeScan & Add ts support (you can change the parameters for rangeScan)
     row_ids.clear();
     key_t lowerKey, upperKey;

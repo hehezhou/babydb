@@ -31,7 +31,9 @@ SeqScanOperator::SeqScanOperator(const ExecutionContext &exec_ctx, const std::st
 
 SeqScanOperator::SeqScanOperator(const ExecutionContext &exec_ctx, const std::string &table_name,
                                  const Schema &fetch_columns, const Schema &output_schema)
-    : Operator(exec_ctx, {}, output_schema), table_name_(table_name), fetch_columns_(fetch_columns) {}
+    : Operator(exec_ctx, {}, output_schema), table_name_(table_name), fetch_columns_(fetch_columns) {
+    throw std::logic_error("Disallowed in Project 2");
+}
 
 OperatorState SeqScanOperator::Next(Chunk &output_chunk) {
     output_chunk.clear();
@@ -48,9 +50,6 @@ OperatorState SeqScanOperator::Next(Chunk &output_chunk) {
         auto& [tuple, meta] = read_guard.Rows()[next_row_id];
         next_row_id++;
 
-        if (meta.is_deleted_) {
-            continue;
-        }
         output_chunk.emplace_back(tuple.KeysFromTuple(key_attrs), next_row_id - 1);
     }
 

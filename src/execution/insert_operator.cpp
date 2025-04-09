@@ -40,6 +40,8 @@ OperatorState InsertOperator::Next(Chunk &output_chunk) {
     if (table.GetIndex() != INVALID_NAME) {
         index = &exec_ctx_.catalog_.FetchIndex(table.GetIndex());
         index_key_attr = table.schema_.GetKeyAttr(index->key_name_);
+    } else {
+        throw std::logic_error("Disallowed in Project 2");
     }
 
     Chunk insert_chunk;
@@ -50,12 +52,8 @@ OperatorState InsertOperator::Next(Chunk &output_chunk) {
         for (auto &insert_data : insert_chunk) {
             auto insert_tuple = insert_data.first.KeysFromTuple(key_attrs);
 
-            if (index != nullptr) {
-                auto key = insert_tuple.KeyFromTuple(index_key_attr);
-                InsertRowWithIndex(write_guard, std::move(insert_tuple), index, key);
-            } else {
-                InsertRowWoIndex(write_guard, std::move(insert_tuple));
-            }
+            auto key = insert_tuple.KeyFromTuple(index_key_attr);
+            InsertRow(write_guard, std::move(insert_tuple), index, key, exec_ctx_.txn_);
         }
     }
     return EXHAUSETED;

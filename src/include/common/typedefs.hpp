@@ -1,5 +1,6 @@
 #pragma once
 
+#include <exception>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdexcept>
@@ -73,6 +74,17 @@ private:
         }
         return INVALID_ID;
     }
+};
+
+class TaintedException : public std::exception {
+public:
+    TaintedException(std::string reason) : reason_(std::move(reason)) {}
+    const char* what() const throw() {
+        return reason_.c_str();
+    }
+
+private:
+    std::string reason_;
 };
 
 }

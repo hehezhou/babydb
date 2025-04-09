@@ -48,7 +48,7 @@ void BabyDB::DropIndex(const std::string &index_name) {
 }
 
 std::shared_ptr<Transaction> BabyDB::CreateTxn() {
-    return txn_mgr_->CreateTxn(std::unique_lock(db_lock_));
+    return txn_mgr_->CreateTxn(std::shared_lock(db_lock_));
 }
 
 bool BabyDB::Commit(Transaction &txn) {

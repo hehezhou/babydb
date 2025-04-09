@@ -8,6 +8,8 @@
 
 namespace babydb {
 
+class Transaction;
+
 //! We only support index with the primary key.
 //! Index may be not thread-safe, so you should use indexes with the table guard.
 class Index {
@@ -26,11 +28,9 @@ public:
 
     DISALLOW_COPY_AND_MOVE(Index);
 
-    virtual void InsertEntry(const data_t &key, idx_t row_id, idx_t start_ts = 0) = 0;
-
-    virtual void EraseEntry(const data_t &key) = 0;
+    virtual void InsertEntry(const data_t &key, idx_t row_id, Transaction &txn) = 0;
     //! Returns INVALID_ID if not found, otherwise returns the row_id
-    virtual idx_t LookupKey(const data_t &key, idx_t query_ts = 0) = 0;
+    virtual idx_t LookupKey(const data_t &key, Transaction &txn) = 0;
 
 friend class Catalog;
 };
@@ -39,7 +39,7 @@ class RangeIndex : public Index {
 public:
     using Index::Index;
 
-    virtual void ScanRange(const RangeInfo &range, std::vector<idx_t> &row_ids, idx_t query_ts = 0) = 0;
+    virtual void ScanRange(const RangeInfo &range, std::vector<idx_t> &row_ids, Transaction &txn) = 0;
 };
 
 }

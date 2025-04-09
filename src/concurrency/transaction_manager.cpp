@@ -2,7 +2,7 @@
 
 namespace babydb {
 
-std::shared_ptr<Transaction> TransactionManager::CreateTxn(std::unique_lock<std::shared_mutex> &&db_lock) {
+std::shared_ptr<Transaction> TransactionManager::CreateTxn(std::shared_lock<std::shared_mutex> &&db_lock) {
     std::unique_lock lock(txn_map_latch_);
     auto result = std::make_shared<Transaction>(next_txn_id_, last_commit_ts_, std::move(db_lock));
     txn_map_.insert(std::make_pair(next_txn_id_.load(), result));
@@ -11,6 +11,7 @@ std::shared_ptr<Transaction> TransactionManager::CreateTxn(std::unique_lock<std:
 }
 
 bool TransactionManager::VerifyTxn([[maybe_unused]] Transaction &txn) {
+    // Project 2: Verify the txn
     return true;
 }
 
@@ -24,6 +25,7 @@ bool TransactionManager::Commit(Transaction &txn) {
         Abort(txn);
         return false;
     }
+    // Project 2: Commit the txn
 
     std::unique_lock map_lock(txn_map_latch_);
     txn.state_ = COMMITED;
@@ -33,6 +35,11 @@ bool TransactionManager::Commit(Transaction &txn) {
 }
 //! The txn should roll back. We do not implement it.
 void TransactionManager::Abort(Transaction &txn) {
+    if (txn.state_ != RUNNING && txn.state_ != TAINTED) {
+        throw std::logic_error("Try to abort a not running or tainted transaction."); 
+    }
+    // Project 2: Rollback the txn
+
     std::unique_lock map_lock(txn_map_latch_);
     txn.state_ = ABORTED;
     txn.Done();

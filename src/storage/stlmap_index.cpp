@@ -6,27 +6,19 @@ StlmapIndex::StlmapIndex(const std::string &name, Table &table, const std::strin
     : RangeIndex(name, table, std::move(key_name)) {
     auto read_guard = table.GetReadTableGuard();
     auto &rows = read_guard.Rows();
-    auto key_attr = table.schema_.GetKeyAttr(key_name);
-    for (idx_t row_id = 0; row_id < rows.size(); row_id++) {
-        auto &row = rows[row_id];
-        if (!row.tuple_meta_.is_deleted_) {
-            InsertEntry(row.tuple_.KeyFromTuple(key_attr), row_id);
-        }
+    if (!rows.empty()) {
+        throw std::logic_error("Index can be only built on an empty table");
     }
 }
 
-void StlmapIndex::InsertEntry(const data_t &key, idx_t row_id, idx_t start_ts) {
+void StlmapIndex::InsertEntry(const data_t &key, idx_t row_id, Transaction &txn) {
     if (index_.find(key) != index_.end()) {
         throw std::logic_error("duplicated key");
     }
     index_[key] = row_id;
 };
 
-void StlmapIndex::EraseEntry(const data_t &key) {
-    index_.erase(key);
-};
-
-idx_t StlmapIndex::LookupKey(const data_t &key, idx_t query_ts) {
+idx_t StlmapIndex::LookupKey(const data_t &key, Transaction &txn) {
     auto ite = index_.find(key);
     if (ite == index_.end()) {
         return INVALID_ID;
@@ -34,7 +26,7 @@ idx_t StlmapIndex::LookupKey(const data_t &key, idx_t query_ts) {
     return ite->second;
 }
 
-void StlmapIndex::ScanRange(const RangeInfo &range, std::vector<idx_t> &row_ids, idx_t query_ts) {
+void StlmapIndex::ScanRange(const RangeInfo &range, std::vector<idx_t> &row_ids, Transaction &txn) {
     row_ids.clear();
     std::map<data_t, idx_t>::iterator start_ite;
     std::map<data_t, idx_t>::iterator end_ite;
