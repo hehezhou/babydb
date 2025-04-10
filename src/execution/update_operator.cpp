@@ -58,14 +58,8 @@ OperatorState UpdateOperator::Next(Chunk &) {
         update_chunk.insert(update_chunk.end(), fetch_chunk.begin(), fetch_chunk.end());
     }
 
-    // First delete, then insert
+    // Directly cover (since in Project 2, there are no primary key update)
     auto write_guard = table.GetWriteTableGuard();
-    for (auto &data : update_chunk) {
-        B_ASSERT(data.second != INVALID_ID);
-        auto &tuple = write_guard.Rows()[data.second].tuple_;
-        auto key = tuple.KeyFromTuple(index_key_attr);
-        DeleteRow(write_guard, data.second, index, key, exec_ctx_.txn_);
-    }
     for (auto &data : update_chunk) {
         auto key = data.first.KeyFromTuple(index_key_attr);
         InsertRow(write_guard, std::move(data.first), index, key, exec_ctx_.txn_);
