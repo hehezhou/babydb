@@ -20,6 +20,8 @@ typedef uint64_t idx_t;
 [[maybe_unused]] const std::string INVALID_NAME = "";
 [[maybe_unused]] const idx_t INVALID_ID = static_cast<idx_t>(-1);
 
+const idx_t TXN_START_ID = 1ll << 62;
+
 struct RangeInfo {
     data_t start;
     data_t end;

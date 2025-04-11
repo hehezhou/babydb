@@ -8,8 +8,6 @@
 
 namespace babydb {
 
-const idx_t TXN_START_ID = 1ll << 62;
-
 class TransactionManager {
 public:
     TransactionManager(IsolationLevel isolation_level = IsolationLevel::SNAPSHOT) : isolation_level_(isolation_level) {}

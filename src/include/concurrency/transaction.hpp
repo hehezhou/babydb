@@ -9,6 +9,8 @@
 
 namespace babydb {
 
+class VersionSkipList;
+
 //! Transaction State
 enum TransactionState { RUNNING, TAINTED, COMMITED, ABORTED };
 
@@ -37,6 +39,18 @@ public:
         return commit_ts_;
     }
 
+    TransactionState GetState() const {
+        return state_.load();
+    }
+
+    void AddModifiedRow(VersionSkipList *row_list) {
+        modified_rows_.push_back(row_list);
+    }
+
+    void AddReadRow(VersionSkipList *row_list) {
+        read_rows_.push_back(row_list);
+    }
+
 private:
     void Done();
 
@@ -46,6 +60,10 @@ private:
     std::shared_lock<std::shared_mutex> db_lock_;
 
     idx_t commit_ts_{INVALID_ID};
+
+    std::vector<VersionSkipList*> modified_rows_;
+
+    std::vector<VersionSkipList*> read_rows_;
 
 friend class TransactionManager;
 };
