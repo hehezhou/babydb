@@ -24,9 +24,9 @@ private:
     bool VerifyTxn(Transaction &txn);
 
 private:
-    std::atomic<idx_t> next_txn_id_{TXN_START_ID};
+    idx_t next_txn_id_{TXN_START_ID};
 
-    std::atomic<idx_t> last_commit_ts_{0};
+    idx_t last_commit_ts_{0};
 
     std::unordered_map<idx_t, std::shared_ptr<Transaction>> txn_map_;
 

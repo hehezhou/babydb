@@ -5,7 +5,7 @@ namespace babydb {
 std::shared_ptr<Transaction> TransactionManager::CreateTxn(std::shared_lock<std::shared_mutex> &&db_lock) {
     std::unique_lock lock(txn_map_latch_);
     auto result = std::make_shared<Transaction>(next_txn_id_, last_commit_ts_, last_commit_ts_, std::move(db_lock));
-    txn_map_.insert(std::make_pair(next_txn_id_.load(), result));
+    txn_map_.insert(std::make_pair(next_txn_id_, result));
     next_txn_id_++;
     return result;
 }
@@ -26,9 +26,9 @@ bool TransactionManager::Commit(Transaction &txn) {
         return false;
     }
     // Project 2: Commit the txn
-    txn.commit_ts_ = last_commit_ts_.fetch_add(1) + 1;
 
     std::unique_lock map_lock(txn_map_latch_);
+    txn.commit_ts_ = ++last_commit_ts_;
     txn.state_ = COMMITED;
     txn.Done();
     txn_map_.erase(txn.txn_id_);
