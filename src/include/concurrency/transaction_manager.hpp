@@ -24,7 +24,7 @@ private:
     bool VerifyTxn(Transaction &txn);
 
 private:
-    std::atomic<idx_t> next_txn_id_{0};
+    std::atomic<idx_t> next_txn_id_{TXN_START_ID};
 
     std::atomic<idx_t> last_commit_ts_{0};
 
