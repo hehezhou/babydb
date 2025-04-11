@@ -51,8 +51,10 @@ TEST(Project2Test, DirtyRead) {
         std::make_shared<ProjectionOperator>(db.GetExecutionContext(txn1), read_operator_1,
             std::make_unique<UDProjection>("payload", [](Tuple &&a) { return a[0] + 1; })));
     EXPECT_EQ(RunOperator(*read_operator_1), (std::vector<Tuple>{Tuple{0, 0}}));
+    EXPECT_EQ(RunOperator(*read_operator_2), (std::vector<Tuple>{Tuple{0, 0}}));
     EXPECT_EQ(RunOperator(update_operator_1), std::vector<Tuple>());
-    EXPECT_EQ(RunOperator(*read_operator_1), (std::vector<Tuple>{Tuple{0, 0}}));
+    EXPECT_EQ(RunOperator(*read_operator_1), (std::vector<Tuple>{Tuple{0, 1}}));
+    EXPECT_EQ(RunOperator(*read_operator_2), (std::vector<Tuple>{Tuple{0, 0}}));
     EXPECT_EQ(db.Commit(*txn1), true);
     EXPECT_EQ(db.Commit(*txn2), true);
     EXPECT_LT(txn1->GetCommitTs(), txn2->GetCommitTs());
