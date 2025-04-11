@@ -26,6 +26,7 @@ bool TransactionManager::Commit(Transaction &txn) {
         return false;
     }
     // Project 2: Commit the txn
+    txn.commit_ts_ = last_commit_ts_.fetch_add(1) + 1;
 
     std::unique_lock map_lock(txn_map_latch_);
     txn.state_ = COMMITED;

@@ -4,6 +4,7 @@
 #include "storage/catalog.hpp"
 #include "storage/index.hpp"
 #include "storage/stlmap_index.hpp"
+#include "storage/art.hpp"
 #include "storage/table.hpp"
 #include "concurrency/transaction_manager.hpp"
 
@@ -36,7 +37,11 @@ void BabyDB::CreateIndex(const std::string &index_name, const std::string &table
     case Stlmap:
         catalog_->CreateIndex(std::make_unique<StlmapIndex>(index_name, table, key_column));
         break;
-    
+
+    case ART:
+        catalog_->CreateIndex(std::make_unique<ArtIndex>(index_name, table, key_column));
+        break;
+
     default:
         throw std::logic_error("CREATE INDEX: unknown index type");
     }

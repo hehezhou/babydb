@@ -9,10 +9,10 @@ static std::vector<std::unique_ptr<Projection>> TransToVec(std::unique_ptr<Proje
 }
 
 ProjectionOperator::ProjectionOperator(const ExecutionContext &exec_ctx,
-                                       const std::shared_ptr<Operator> &probe_child_operator,
+                                       const std::shared_ptr<Operator> &child_operator,
                                        std::vector<std::unique_ptr<Projection>> &&projections,
                                        bool update_in_place)
-    : Operator(exec_ctx, {probe_child_operator}) {
+    : Operator(exec_ctx, {child_operator}) {
     for (auto &projection_function : projections_) {
         if (projection_function == nullptr) {
             throw std::logic_error("ProjectionOperator: projection function is nullptr");
@@ -43,10 +43,10 @@ ProjectionOperator::ProjectionOperator(const ExecutionContext &exec_ctx,
 }
 
 ProjectionOperator::ProjectionOperator(const ExecutionContext &exec_ctx,
-                                       const std::shared_ptr<Operator> &probe_child_operator,
+                                       const std::shared_ptr<Operator> &child_operator,
                                        std::unique_ptr<Projection> &&projection,
                                        bool update_in_place)
-    : ProjectionOperator(exec_ctx, probe_child_operator, TransToVec(std::move(projection)), update_in_place) {}
+    : ProjectionOperator(exec_ctx, child_operator, TransToVec(std::move(projection)), update_in_place) {}
 
 OperatorState ProjectionOperator::Next(Chunk &output_chunk) {
     auto result = child_operators_[0]->Next(output_chunk);
