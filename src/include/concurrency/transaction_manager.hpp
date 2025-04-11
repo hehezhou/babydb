@@ -12,6 +12,7 @@ const idx_t TXN_START_ID = 1ll << 62;
 
 class TransactionManager {
 public:
+    TransactionManager(IsolationLevel isolation_level = IsolationLevel::SNAPSHOT) : isolation_level_(isolation_level) {}
     //! Create a new transaction.
     std::shared_ptr<Transaction> CreateTxn(std::shared_lock<std::shared_mutex> &&db_lock);
     //! Commit a transaction, return false if aborted.
@@ -32,6 +33,8 @@ private:
     std::shared_mutex txn_map_latch_;
 
     std::mutex commit_latch_;
+
+    const IsolationLevel isolation_level_;
 };
 
 }

@@ -87,4 +87,9 @@ private:
     std::string reason_;
 };
 
+enum class IsolationLevel : uint8_t {
+    SNAPSHOT,
+    SERIALIZABLE
+};
+
 }

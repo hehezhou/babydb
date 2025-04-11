@@ -15,8 +15,8 @@ enum TransactionState { RUNNING, TAINTED, COMMITED, ABORTED };
 //! The concurrency control is just lock the whole database.
 class Transaction {
 public:
-    explicit Transaction(idx_t txn_id, idx_t read_ts, std::shared_lock<std::shared_mutex> &&db_lock)
-        : txn_id_(txn_id), read_ts_(read_ts), db_lock_(std::move(db_lock)) {}
+    explicit Transaction(idx_t txn_id, idx_t read_ts, idx_t gc_ts, std::shared_lock<std::shared_mutex> &&db_lock)
+        : txn_id_(txn_id), read_ts_(read_ts), gc_ts_(gc_ts), db_lock_(std::move(db_lock)) {}
 
     DISALLOW_COPY(Transaction);
 
@@ -25,6 +25,8 @@ public:
     const idx_t txn_id_;
 
     const idx_t read_ts_;
+
+    const idx_t gc_ts_;
 
 public:
     void SetTainted() {

@@ -10,7 +10,7 @@
 namespace babydb {
 
 BabyDB::BabyDB(const ConfigGroup &config) : catalog_(std::make_unique<Catalog>()),
-    txn_mgr_(std::make_unique<TransactionManager>()), config_(std::make_unique<ConfigGroup>(config)) {}
+    txn_mgr_(std::make_unique<TransactionManager>(config.ISOLATION_LEVEL)), config_(std::make_unique<ConfigGroup>(config)) {}
 
 BabyDB::~BabyDB() {
     catalog_.reset();
