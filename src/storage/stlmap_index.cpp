@@ -11,14 +11,14 @@ StlmapIndex::StlmapIndex(const std::string &name, Table &table, const std::strin
     }
 }
 
-void StlmapIndex::InsertEntry(const data_t &key, idx_t row_id, Transaction &txn) {
+void StlmapIndex::InsertEntry(const data_t &key, idx_t row_id, ExecutionContext &exec_ctx) {
     if (index_.find(key) != index_.end()) {
         throw std::logic_error("duplicated key");
     }
     index_[key] = row_id;
 };
 
-idx_t StlmapIndex::LookupKey(const data_t &key, Transaction &txn) {
+idx_t StlmapIndex::LookupKey(const data_t &key, ExecutionContext &exec_ctx) {
     auto ite = index_.find(key);
     if (ite == index_.end()) {
         return INVALID_ID;
@@ -26,7 +26,7 @@ idx_t StlmapIndex::LookupKey(const data_t &key, Transaction &txn) {
     return ite->second;
 }
 
-void StlmapIndex::ScanRange(const RangeInfo &range, std::vector<idx_t> &row_ids, Transaction &txn) {
+void StlmapIndex::ScanRange(const RangeInfo &range, std::vector<idx_t> &row_ids, ExecutionContext &exec_ctx) {
     row_ids.clear();
     std::map<data_t, idx_t>::iterator start_ite;
     std::map<data_t, idx_t>::iterator end_ite;

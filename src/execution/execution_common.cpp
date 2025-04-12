@@ -5,7 +5,7 @@
 
 namespace babydb {
 
-void InsertRow(WriteTableGuard &write_guard, Tuple &&tuple, Index *index, const data_t &key, Transaction &txn) {
+void InsertRow(WriteTableGuard &write_guard, Tuple &&tuple, Index *index, const data_t &key, ExecutionContext &exec_ctx) {
     // Project 2: Implement it
 }
 

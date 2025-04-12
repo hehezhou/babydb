@@ -53,7 +53,7 @@ OperatorState InsertOperator::Next(Chunk &output_chunk) {
             auto insert_tuple = insert_data.first.KeysFromTuple(key_attrs);
 
             auto key = insert_tuple.KeyFromTuple(index_key_attr);
-            InsertRow(write_guard, std::move(insert_tuple), index, key, exec_ctx_.txn_);
+            InsertRow(write_guard, std::move(insert_tuple), index, key, exec_ctx_);
         }
     }
     return EXHAUSETED;

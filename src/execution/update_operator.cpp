@@ -62,7 +62,7 @@ OperatorState UpdateOperator::Next(Chunk &) {
     auto write_guard = table.GetWriteTableGuard();
     for (auto &data : update_chunk) {
         auto key = data.first.KeyFromTuple(index_key_attr);
-        InsertRow(write_guard, std::move(data.first), index, key, exec_ctx_.txn_);
+        InsertRow(write_guard, std::move(data.first), index, key, exec_ctx_);
     }
 
     return EXHAUSETED;

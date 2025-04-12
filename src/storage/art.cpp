@@ -721,9 +721,9 @@ ArtIndex::ArtIndex(const std::string &name, Table &table, const std::string &key
 
 ArtIndex::~ArtIndex() {}
 
-void ArtIndex::InsertEntry(const data_t &key, idx_t row_id, Transaction &txn) {
+void ArtIndex::InsertEntry(const data_t &key, idx_t row_id, ExecutionContext &exec_ctx) {
     // P1 TODO: Add ts support
-    if (LookupKey(key, txn) != INVALID_ID) {
+    if (LookupKey(key, exec_ctx) != INVALID_ID) {
         throw std::logic_error("duplicated key");
     }
     key_t keyBytes;
@@ -731,7 +731,7 @@ void ArtIndex::InsertEntry(const data_t &key, idx_t row_id, Transaction &txn) {
     insert(art_tree_->root_, &art_tree_->root_, keyBytes, 0, key);
 }
 
-idx_t ArtIndex::LookupKey(const data_t &key, Transaction &txn) {
+idx_t ArtIndex::LookupKey(const data_t &key, ExecutionContext &exec_ctx) {
     // P1 TODO: This version returns the original key, change it to return the rowid & Add ts support
     key_t keyBytes;
     loadKey(key, keyBytes);
@@ -742,7 +742,7 @@ idx_t ArtIndex::LookupKey(const data_t &key, Transaction &txn) {
     return static_cast<idx_t>(leaf.AsData());
 }
 
-void ArtIndex::ScanRange(const RangeInfo &range, std::vector<idx_t> &row_ids, Transaction &txn) {
+void ArtIndex::ScanRange(const RangeInfo &range, std::vector<idx_t> &row_ids, ExecutionContext &exec_ctx) {
     // P1 TODO: Implement rangeScan & Add ts support (you can change the parameters for rangeScan)
     row_ids.clear();
     key_t lowerKey, upperKey;

@@ -8,6 +8,7 @@
 
 namespace babydb {
 
+class ExecutionContext;
 class Transaction;
 
 //! We only support index with the primary key.
@@ -28,9 +29,9 @@ public:
 
     DISALLOW_COPY_AND_MOVE(Index);
 
-    virtual void InsertEntry(const data_t &key, idx_t row_id, Transaction &txn) = 0;
+    virtual void InsertEntry(const data_t &key, idx_t row_id, ExecutionContext &exec_ctx) = 0;
     //! Returns INVALID_ID if not found, otherwise returns the row_id
-    virtual idx_t LookupKey(const data_t &key, Transaction &txn) = 0;
+    virtual idx_t LookupKey(const data_t &key, ExecutionContext &exec_ctx) = 0;
 
 friend class Catalog;
 };
@@ -39,7 +40,7 @@ class RangeIndex : public Index {
 public:
     using Index::Index;
 
-    virtual void ScanRange(const RangeInfo &range, std::vector<idx_t> &row_ids, Transaction &txn) = 0;
+    virtual void ScanRange(const RangeInfo &range, std::vector<idx_t> &row_ids, ExecutionContext &exec_ctx) = 0;
 };
 
 }

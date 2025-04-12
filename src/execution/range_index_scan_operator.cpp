@@ -23,7 +23,7 @@ OperatorState RangeIndexScanOperator::Next(Chunk &output_chunk) {
         results_scanned_ = true;
 
         auto &index = dynamic_cast<RangeIndex&>(exec_ctx_.catalog_.FetchIndex(index_name_));
-        index.ScanRange(range_, row_ids_, exec_ctx_.txn_);
+        index.ScanRange(range_, row_ids_, exec_ctx_);
         next_ite_ = row_ids_.begin();
     }
 
