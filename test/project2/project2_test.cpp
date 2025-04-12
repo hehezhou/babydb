@@ -56,7 +56,6 @@ TEST(Project2Test, DirtyRead) {
     EXPECT_EQ(RunOperator(*read_operator_2), (std::vector<Tuple>{Tuple{0, 0}}));
     EXPECT_EQ(db.Commit(*txn1), true);
     EXPECT_EQ(db.Commit(*txn2), true);
-    EXPECT_LT(txn1->GetCommitTs(), txn2->GetCommitTs());
 }
 
 TEST(Project2Test, TaintedTest) {

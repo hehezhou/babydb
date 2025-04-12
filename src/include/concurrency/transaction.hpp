@@ -51,6 +51,10 @@ public:
         read_rows_.push_back(row_list);
     }
 
+    bool ReadOnly() {
+        return modified_rows_.empty();
+    }
+
 private:
     void Done();
 
