@@ -27,6 +27,14 @@ static std::vector<Tuple> RunOperator(Operator &test_operator, bool sort_output 
     return results;
 }
 
+static bool AbortOrCommit(BabyDB &db, Transaction &txn) {
+    if (txn.GetState() == TAINTED) {
+        db.Abort(txn);
+        return false;
+    }
+    return db.Commit(txn);
+}
+
 TEST(Project2Test, DirtyRead) {
     BabyDB db;
     Schema schema{"key", "payload"};
@@ -56,6 +64,39 @@ TEST(Project2Test, DirtyRead) {
     EXPECT_EQ(RunOperator(*read_operator_2), (std::vector<Tuple>{Tuple{0, 0}}));
     EXPECT_EQ(db.Commit(*txn1), true);
     EXPECT_EQ(db.Commit(*txn2), true);
+}
+
+TEST(Project2Test, NonRepeatableRead) {
+    BabyDB db;
+    Schema schema{"key", "payload"};
+    db.CreateTable("t0", schema);
+    db.CreateIndex("t0_i0", "t0", "key", IndexType::ART);
+    std::vector<Tuple> init_tuples;
+    init_tuples.push_back(Tuple{0, 0});
+    init_tuples.push_back(Tuple{10, 10});
+    auto init_txn = db.CreateTxn();
+    auto init_operator = InsertOperator(db.GetExecutionContext(init_txn),
+        std::make_shared<ValueOperator>(db.GetExecutionContext(init_txn), schema, std::move(init_tuples)), "t0");
+    EXPECT_EQ(RunOperator(init_operator), std::vector<Tuple>());
+    EXPECT_EQ(db.Commit(*init_txn), true);
+
+    auto txn1 = db.CreateTxn();
+    auto txn2 = db.CreateTxn();
+    auto read_operator_1 = std::make_shared<RangeIndexScanOperator>(db.GetExecutionContext(txn1), "t0", schema, schema, "t0_i0", RangeInfo{0, 0});
+    auto read_operator_2 = std::make_shared<RangeIndexScanOperator>(db.GetExecutionContext(txn2), "t0", schema, schema, "t0_i0", RangeInfo{0, 0});
+
+    auto update_operator_1 = UpdateOperator(db.GetExecutionContext(txn1),
+        std::make_shared<ProjectionOperator>(db.GetExecutionContext(txn1), read_operator_1,
+            std::make_unique<UDProjection>("payload", [](Tuple &&a) { return a[0] + 1; })));
+    EXPECT_EQ(RunOperator(*read_operator_1), (std::vector<Tuple>{Tuple{0, 0}}));
+    EXPECT_EQ(RunOperator(*read_operator_2), (std::vector<Tuple>{Tuple{0, 0}}));
+    EXPECT_EQ(RunOperator(update_operator_1), std::vector<Tuple>());
+    EXPECT_EQ(RunOperator(*read_operator_1), (std::vector<Tuple>{Tuple{0, 1}}));
+    EXPECT_EQ(RunOperator(*read_operator_2), (std::vector<Tuple>{Tuple{0, 0}}));
+    EXPECT_EQ(db.Commit(*txn1), true);
+    EXPECT_EQ(RunOperator(*read_operator_2), (std::vector<Tuple>{Tuple{0, 0}}));
+    EXPECT_EQ(db.Commit(*txn2), true);
+    EXPECT_GT(txn1->GetCommitTs(), txn2->GetCommitTs());
 }
 
 TEST(Project2Test, TaintedTest) {
@@ -139,6 +180,48 @@ TEST(Project2Test, AbortTest) {
     EXPECT_EQ(RunOperator(update_operator_2), std::vector<Tuple>());
     EXPECT_EQ(RunOperator(*read_operator_2), (std::vector<Tuple>{Tuple{0, 2}}));
     EXPECT_EQ(db.Commit(*txn2), true);
+}
+
+TEST(Project2Test, SerializableTest) {
+    BabyDB db(ConfigGroup{.ISOLATION_LEVEL = IsolationLevel::SERIALIZABLE});
+    Schema schema{"key", "payload"};
+    db.CreateTable("t0", schema);
+    db.CreateIndex("t0_i0", "t0", "key", IndexType::ART);
+    std::vector<Tuple> init_tuples;
+    init_tuples.push_back(Tuple{0, 0});
+    init_tuples.push_back(Tuple{10, 10});
+    auto init_txn = db.CreateTxn();
+    auto init_operator = InsertOperator(db.GetExecutionContext(init_txn),
+        std::make_shared<ValueOperator>(db.GetExecutionContext(init_txn), schema, std::move(init_tuples)), "t0");
+    EXPECT_EQ(RunOperator(init_operator), std::vector<Tuple>());
+    EXPECT_EQ(db.Commit(*init_txn), true);
+
+    auto txn1 = db.CreateTxn();
+    auto txn2 = db.CreateTxn();
+
+    auto read_operator_1_0 = std::make_shared<RangeIndexScanOperator>(db.GetExecutionContext(txn1), "t0", schema, schema, "t0_i0", RangeInfo{0, 0});
+    auto read_operator_1_10 = std::make_shared<RangeIndexScanOperator>(db.GetExecutionContext(txn1), "t0", schema, schema, "t0_i0", RangeInfo{10, 10});
+    auto update_operator_1 = UpdateOperator(db.GetExecutionContext(txn1),
+        std::make_shared<ProjectionOperator>(db.GetExecutionContext(txn1), read_operator_1_0,
+            std::make_unique<UDProjection>("payload", [](Tuple &&a) { return a[0] + 1; })));
+
+    auto read_operator_2_0 = std::make_shared<RangeIndexScanOperator>(db.GetExecutionContext(txn2), "t0", schema, schema, "t0_i0", RangeInfo{0, 0});
+    auto read_operator_2_10 = std::make_shared<RangeIndexScanOperator>(db.GetExecutionContext(txn2), "t0", schema, schema, "t0_i0", RangeInfo{10, 10});
+    auto update_operator_2 = UpdateOperator(db.GetExecutionContext(txn2),
+        std::make_shared<ProjectionOperator>(db.GetExecutionContext(txn2), read_operator_2_10,
+            std::make_unique<UDProjection>("payload", [](Tuple &&a) { return a[0] + 1; })));
+
+    EXPECT_EQ(RunOperator(*read_operator_1_0), (std::vector<Tuple>{Tuple{0, 0}}));
+    EXPECT_EQ(RunOperator(*read_operator_1_10), (std::vector<Tuple>{Tuple{10, 10}}));
+    EXPECT_EQ(RunOperator(*read_operator_2_0), (std::vector<Tuple>{Tuple{0, 0}}));
+    EXPECT_EQ(RunOperator(*read_operator_2_10), (std::vector<Tuple>{Tuple{10, 10}}));
+    EXPECT_EQ(RunOperator(update_operator_1), std::vector<Tuple>());
+    EXPECT_EQ(RunOperator(update_operator_2), std::vector<Tuple>());
+    EXPECT_EQ(RunOperator(*read_operator_1_0), (std::vector<Tuple>{Tuple{0, 1}}));
+    EXPECT_EQ(RunOperator(*read_operator_1_10), (std::vector<Tuple>{Tuple{10, 10}}));
+    EXPECT_EQ(RunOperator(*read_operator_2_0), (std::vector<Tuple>{Tuple{0, 0}}));
+    EXPECT_EQ(RunOperator(*read_operator_2_10), (std::vector<Tuple>{Tuple{10, 11}}));
+    EXPECT_EQ(static_cast<idx_t>(AbortOrCommit(db, *txn1)) + static_cast<idx_t>(AbortOrCommit(db, *txn2)), 1);
 }
 
 }
