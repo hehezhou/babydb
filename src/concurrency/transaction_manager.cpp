@@ -21,7 +21,7 @@ bool TransactionManager::Commit(Transaction &txn) {
     }
     std::unique_lock commit_lock(commit_latch_);
     if (!VerifyTxn(txn)) {
-        commit_lock.release();
+        commit_lock.unlock();
         Abort(txn);
         return false;
     }

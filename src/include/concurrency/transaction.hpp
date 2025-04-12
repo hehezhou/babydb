@@ -20,7 +20,7 @@ public:
     explicit Transaction(idx_t txn_id, idx_t read_ts, idx_t gc_ts, std::shared_lock<std::shared_mutex> &&db_lock)
         : txn_id_(txn_id), read_ts_(read_ts), gc_ts_(gc_ts), db_lock_(std::move(db_lock)) {}
 
-    DISALLOW_COPY(Transaction);
+    DISALLOW_COPY_AND_MOVE(Transaction);
 
     ~Transaction() = default;
 

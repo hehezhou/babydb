@@ -68,7 +68,7 @@ protected:
         auto schema_copy = output_schema_;
         std::sort(schema_copy.begin(), schema_copy.end());
         for (idx_t column_id = 1; column_id < schema_copy.size(); column_id++) {
-            if (schema_copy[column_id] == schema_copy[column_id + 1]) {
+            if (schema_copy[column_id] == schema_copy[column_id - 1]) {
                 throw std::logic_error("Duplicated column name in operator's output");
             }
         }
