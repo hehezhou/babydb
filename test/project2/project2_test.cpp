@@ -273,15 +273,16 @@ TEST(Project2Test, BankSystemTest) {
     std::atomic<idx_t> executed_tasks(0), failed_task(0);
     auto WorkThread = [&db, &executed_tasks, &failed_task, n, total_tasks, &schema, &names](idx_t thread_id) {
         std::mt19937_64 rnd(thread_id + seed);
-        std::uniform_int_distribution<idx_t> dist(0, n - 1);
+        std::uniform_int_distribution<idx_t> dist_source(0, n / 2 - 1);
+        std::uniform_int_distribution<idx_t> dist_target(n / 2, n - 1);
         idx_t local_tasks = 0;
         while (executed_tasks.fetch_add(1) < total_tasks) {
             bool success;
             do {
                 std::shared_ptr<Transaction> txn;
                 try {
-                    auto source = names[dist(rnd)];
-                    auto target = names[dist(rnd)];
+                    auto source = names[dist_source(rnd)];
+                    auto target = names[dist_target(rnd)];
                     txn = db.CreateTxn();
                     auto read_operator_source =
                         std::make_shared<RangeIndexScanOperator>(db.GetExecutionContext(txn), "t0", schema, schema, "t0_i0", RangeInfo{source, source});
@@ -328,6 +329,20 @@ TEST(Project2Test, BankSystemTest) {
     for (auto &thr : thread_pool) {
         thr.join();
     }
+    auto txn = db.CreateTxn();
+    auto read_operator =
+        std::make_shared<RangeIndexScanOperator>(db.GetExecutionContext(txn), "t0", schema, schema, "t0_i0", RangeInfo{DATA_MIN, DATA_MAX});
+    idx_t sum = 0;
+    auto result = RunOperator(*read_operator);
+    ASSERT_EQ(result.size(), n);
+    for (auto &row : result) {
+        ASSERT_EQ(row.size(), 2);
+        if (std::find(names.begin(), names.end(), row[0]) < names.begin() + n / 2) {
+            sum += row[1];
+        }
+    }
+    ASSERT_EQ(sum, (n / 2 - 1) * total_tasks);
+    db.Commit(*txn);
     GTEST_LOG_(INFO) << std::to_string(failed_task.load()) + " txns has been aborted.\n";
 }
 
