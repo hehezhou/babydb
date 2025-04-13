@@ -3,7 +3,7 @@
 namespace babydb {
 
 void Transaction::Done() {
-    db_lock_.release();
+    db_lock_.unlock();
 }
 
 }

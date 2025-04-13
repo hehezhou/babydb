@@ -318,9 +318,6 @@ TEST(Project2Test, BankSystemTest) {
                 ASSERT_EQ(sum, n * total_tasks);
                 db.Commit(*txn);
             }
-            if (local_tasks % std::max<idx_t>(1, total_tasks / 20) == 0) {
-                GTEST_LOG_(INFO) << "Thread " + std::to_string(thread_id) + " has executed " + std::to_string(local_tasks) + " tasks\n";
-            }
         }
     };
     std::vector<std::thread> thread_pool;
