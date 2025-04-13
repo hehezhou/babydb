@@ -254,7 +254,7 @@ TEST(Project2Test, SerializableTest) {
 }
 
 TEST(Project2Test, BankSystemTest) {
-    BabyDB db(ConfigGroup{.ISOLATION_LEVEL = IsolationLevel::SERIALIZABLE});
+    BabyDB db(ConfigGroup{});
     Schema schema{"name", "balance"};
     db.CreateTable("t0", schema);
     db.CreateIndex("t0_i0", "t0", "name", IndexType::ART);
@@ -294,6 +294,8 @@ TEST(Project2Test, BankSystemTest) {
                     auto update_operator_target = UpdateOperator(db.GetExecutionContext(txn),
                         std::make_shared<ProjectionOperator>(db.GetExecutionContext(txn), read_operator_target,
                             std::make_unique<UDProjection>("balance", [](Tuple &&a) { return a[0] + 1; })));
+                    ASSERT_EQ(RunOperator(*read_operator_source).size(), 1);
+                    ASSERT_EQ(RunOperator(*read_operator_target).size(), 1);
                     RunOperator(update_operator_source);
                     RunOperator(update_operator_target);
                     success = db.Commit(*txn);
