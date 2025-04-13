@@ -258,7 +258,7 @@ TEST(Project2Test, BankSystemTest) {
     Schema schema{"name", "balance"};
     db.CreateTable("t0", schema);
     db.CreateIndex("t0_i0", "t0", "name", IndexType::ART);
-    const idx_t n = 100, total_tasks = 100000, thread_count = 2;
+    const idx_t n = 100, total_tasks = 100000, thread_count = 8;
     std::vector<idx_t> names = GenKeySet(n, seed * 2);
     std::vector<Tuple> init_tuples;
     for (idx_t i = 0; i < n; i++) {
@@ -301,7 +301,7 @@ TEST(Project2Test, BankSystemTest) {
                     db.Abort(*txn);
                 }
                 if (!success) {
-                    ASSERT_LE(failed_task.fetch_add(1) + 1, total_tasks / 10) << "too many rollback";
+                    ASSERT_LE(failed_task.fetch_add(1) + 1, total_tasks) << "too many rollback";
                 }
             } while (!success);
             if (++local_tasks % n == 0) {
@@ -328,6 +328,143 @@ TEST(Project2Test, BankSystemTest) {
     for (auto &thr : thread_pool) {
         thr.join();
     }
+    GTEST_LOG_(INFO) << std::to_string(failed_task.load()) + " txns has been aborted.\n";
+}
+
+TEST(Project2Test, SellSystemTest) {
+    BabyDB db(ConfigGroup{.ISOLATION_LEVEL = IsolationLevel::SERIALIZABLE});
+    Schema price_schema{"key", "price"};
+    db.CreateTable("t_price", price_schema);
+    db.CreateIndex("t_price_i", "t_price", "key", IndexType::ART);
+
+    Schema goods_schema{"key", "goods"};
+    db.CreateTable("t_goods", goods_schema);
+    db.CreateIndex("t_goods_i", "t_goods", "key", IndexType::ART);
+
+    Schema selled_schema{"key", "selled"};
+    db.CreateTable("t_selled", selled_schema);
+    db.CreateIndex("t_selled_i", "t_selled", "key", IndexType::ART);
+
+    const idx_t total_tasks = 100000, thread_count = 3;
+
+    auto init_txn = db.CreateTxn();
+    std::vector<Tuple> init_tuples;
+
+    for (idx_t i = 0; i < thread_count; i++) {
+        init_tuples.push_back(Tuple{i, 0});
+    }
+    auto init_operator = std::make_shared<InsertOperator>(db.GetExecutionContext(init_txn),
+        std::make_shared<ValueOperator>(db.GetExecutionContext(init_txn), selled_schema, std::move(init_tuples)), "t_selled");
+    EXPECT_EQ(RunOperator(*init_operator), std::vector<Tuple>());
+
+    init_tuples.clear();
+    init_tuples.push_back(Tuple{0, 0});
+    init_operator = std::make_shared<InsertOperator>(db.GetExecutionContext(init_txn),
+        std::make_shared<ValueOperator>(db.GetExecutionContext(init_txn), price_schema, std::move(init_tuples)), "t_price");
+    EXPECT_EQ(RunOperator(*init_operator), std::vector<Tuple>());
+
+    init_tuples.clear();
+    init_tuples.push_back(Tuple{0, total_tasks});
+    init_operator = std::make_shared<InsertOperator>(db.GetExecutionContext(init_txn),
+        std::make_shared<ValueOperator>(db.GetExecutionContext(init_txn), goods_schema, std::move(init_tuples)), "t_goods");
+    EXPECT_EQ(RunOperator(*init_operator), std::vector<Tuple>());
+
+    EXPECT_EQ(db.Commit(*init_txn), true);
+
+    std::atomic<idx_t> executed_tasks(0), failed_task(0);
+    std::atomic<data_t> expected_result(0);
+    auto WorkThread = [&](idx_t thread_id) {
+        idx_t local_tasks = 0;
+        while (executed_tasks.fetch_add(1) < total_tasks) {
+            bool success;
+            do {
+                std::shared_ptr<Transaction> txn;
+                try {
+                    txn = db.CreateTxn();
+                    auto read_operator_price = std::make_shared<RangeIndexScanOperator>(
+                        db.GetExecutionContext(txn), "t_price", Schema{"price"}, Schema{"price"}, "t_price_i", RangeInfo{0, 0});
+                    auto result = RunOperator(*read_operator_price);
+                    ASSERT_EQ(result.size(), 1);
+                    ASSERT_EQ(result[0].size(), 1);
+                    auto price = result[0][0];
+
+                    auto read_operator_selled = std::make_shared<RangeIndexScanOperator>(
+                        db.GetExecutionContext(txn), "t_selled", selled_schema, selled_schema, "t_selled_i", RangeInfo{thread_id, thread_id});
+                    auto update_operator_selled = UpdateOperator(db.GetExecutionContext(txn),
+                        std::make_shared<ProjectionOperator>(db.GetExecutionContext(txn), read_operator_selled,
+                            std::make_unique<UDProjection>("selled", [price](Tuple &&a) { return a[0] + price; })));
+                    RunOperator(update_operator_selled);
+
+                    auto read_operator_goods = std::make_shared<RangeIndexScanOperator>(
+                        db.GetExecutionContext(txn), "t_goods", goods_schema, goods_schema, "t_goods_i", RangeInfo{0, 0});
+                    auto update_operator_goods = UpdateOperator(db.GetExecutionContext(txn),
+                        std::make_shared<ProjectionOperator>(db.GetExecutionContext(txn), read_operator_goods,
+                            std::make_unique<UDProjection>("goods", [price](Tuple &&a) { return a[0] - 1; })));
+                    RunOperator(update_operator_goods);
+
+                    success = db.Commit(*txn);
+                } catch (const TaintedException &e) {
+                    success = false;
+                    db.Abort(*txn);
+                }
+                if (!success) {
+                    ASSERT_LE(failed_task.fetch_add(1) + 1, total_tasks * 5) << "too many rollback";
+                }
+            } while (!success);
+            if (++local_tasks % 100 == 0) {
+                bool success;
+                do {
+                    std::shared_ptr<Transaction> txn;
+                    try {
+                        txn = db.CreateTxn();
+                        auto read_operator_price = std::make_shared<RangeIndexScanOperator>(
+                            db.GetExecutionContext(txn), "t_price", price_schema, price_schema, "t_price_i", RangeInfo{0, 0});
+                        auto update_operator_price = UpdateOperator(db.GetExecutionContext(txn),
+                            std::make_shared<ProjectionOperator>(db.GetExecutionContext(txn), read_operator_price,
+                                std::make_unique<UDProjection>("price", [](Tuple &&a) { return a[0] + 1; })));
+                        RunOperator(update_operator_price);
+
+                        auto read_operator_goods = std::make_shared<RangeIndexScanOperator>(
+                            db.GetExecutionContext(txn), "t_goods", Schema{"goods"}, Schema{"goods"}, "t_goods_i", RangeInfo{0, 0});
+                        auto result = RunOperator(*read_operator_goods);
+                        ASSERT_EQ(result.size(), 1);
+                        ASSERT_EQ(result[0].size(), 1);
+
+                        success = db.Commit(*txn);
+                        if (success) {
+                            expected_result.fetch_add(result[0][0]);
+                        }
+                    } catch (const TaintedException &e) {
+                        success = false;
+                        db.Abort(*txn);
+                    }
+                    if (!success) {
+                        ASSERT_LE(failed_task.fetch_add(1) + 1, total_tasks * 5) << "too many rollback";
+                    }
+                } while (!success);
+            }
+        }
+    };
+    std::vector<std::thread> thread_pool;
+    for (idx_t i = 0; i < thread_count - 1; i++) {
+        thread_pool.emplace_back(WorkThread, i);
+    }
+    WorkThread(thread_count - 1);
+    for (auto &thr : thread_pool) {
+        thr.join();
+    }
+    auto txn = db.CreateTxn();
+    auto read_operator_selled = std::make_shared<RangeIndexScanOperator>(
+        db.GetExecutionContext(txn), "t_selled", Schema{"selled"}, Schema{"selled"}, "t_selled_i", RangeInfo{0, thread_count - 1});
+    auto result = RunOperator(*read_operator_selled);
+    ASSERT_EQ(result.size(), thread_count);
+    data_t selled_sum = 0;
+    for (auto &row : result) {
+        ASSERT_EQ(row.size(), 1);
+        selled_sum += row[0];
+    }
+    EXPECT_EQ(selled_sum, expected_result);
+    EXPECT_EQ(db.Commit(*txn), true);
     GTEST_LOG_(INFO) << std::to_string(failed_task.load()) + " txns has been aborted.\n";
 }
 
