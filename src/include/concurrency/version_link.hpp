@@ -4,6 +4,10 @@
 
 namespace babydb {
 
+void RegisterVersionNode();
+
+void UnregisterVersionNode();
+
 class VersionSkipList {
 
 };
