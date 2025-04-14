@@ -4,6 +4,8 @@
 
 namespace babydb {
 
+// START: Do not modify this part.
+
 std::atomic<idx_t> current_nodes{0};
 std::atomic<idx_t> max_nodes{0};
 
@@ -16,5 +18,7 @@ void RegisterVersionNode() {
 void UnregisterVersionNode() {
     current_nodes.fetch_sub(1, std::memory_order_relaxed);
 }
+
+// END: Do not modify this part.
 
 }

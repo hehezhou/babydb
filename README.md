@@ -138,3 +138,41 @@ For each test, you'll get the whole score if you pass the test within reasonable
 10. LongVersionChain_RandomTs: Require task 3. Note that this test have a large number of version link update.
 11. LongVersionChain_SequentialTs_RangeQuery: Require task 1 & 2. Note that this test have a large number of version link updates and range queries.
 12. LongVersionChain_RandomTs_RangeQuery: Require ALL task. Note that this test have a large number of version link updates and range queries.
+
+### Project 2
+
+You should at least modify `src/storage/art.cpp`, `src/concurrency/version_link.cpp`, `src/concurrency/transaction_manager.cpp`, `src/execution/execution_common.cpp` and the header file corresponding to them. You should move your version links to `src/concurrency/version_link.cpp` so that other parts of the database can use it.
+
+For a transaction, we will first call `BabyDB::CreateTxn` to create a transaction, then execute with this transaction, finally call `BabyDB::Commit(txn)` or `BabyDB::Abort(txn)` to commit or rollback the transaction.
+
+There is a configurable domain in `ConfigGroup` that indicates the isolation level this database instance using. **Do not check serializability on Snapshot Isolation Level.**
+
+Once a conflict is found, call `Transaction::SetTainted` and throw a `TaintedException` error.
+
+In summary, for a transaction, there are $4$ cases:
+
+1. The transaction is tainted. **The database should not directly rollback the transaction when finding conflict. The application will abort the transaction.**
+2. The transaction works well but aborted by the application.
+3. The transaction works well but finds conflicts when trying to commit. In this case, you should call `Abort(txn)` in the Commit function.
+4. The transaction works well and finds no conflict when trying to commit. Only in this case, the transaction will commit successfully.
+
+**Version Link Trigger**: When creating a version node, call `RegisterVersionNode`. When deleting a version node, call `UnregisterVersionNode`.
+
+Here is the information about testcases:
+
+1. DirtyRead (1 pts): Require snapshot isolation.
+1. NonRepeatableRead (1 pts): Require snapshot isolation.
+1. TaintedTest (1 pts): Require snapshot isolation and write-write conflict detection.
+1. AbortTest (1 pts): Require snapshot isolation, write-write conflict detection, and rollback.
+1. SerializableTest (1 pts): Require serializable check and rollback.
+1. BankSystemTest (4 pts): A workload on Snapshot Isolation. Multi-thread.
+1. SellSystemTest (4 pts): A workload on Serializable. Multi-thread.
+1. GCTest (3 pts): Check if your GC implementation is correct. We will manually check if you use trigger correctly, if not, you will not get the points even if you pass this test.
+
+You can see `test/project2/project2_test.cpp` to get more details about the workload.
+
+**Important Notice:** If your code has any one of the following problems, you will get 0 points for the whole project 2:
+
+1. Memory leak or other memory management problems. We check this by `asan` which is enabled by default in the `Debug` mode.
+1. Any Lock (except for the `shared_mutex` on the whole database we given, but you cannot modify any sentence about it). Since MVCC and OCC are lock-free concurrency control methods. Latches are acceptable, the standard for distinguishing between locks and latches is, when getting a mutex, if your code will release the mutex after a finite time in the same `Operator`.
+1. Any behavior to identify workload. Although we will grade your implementation on these 8 testcases, your implementation should work well on any possible workload.
