@@ -171,6 +171,8 @@ Here is the information about testcases:
 
 You can see `test/project2/project2_test.cpp` to get more details about the workload.
 
+**Submission:** Submit the whole `src/` file folder and the report pdf. Add all files into a zip file.
+
 **Important Notice:** If your code has any one of the following problems, you will get 0 points for the whole project 2:
 
 1. Memory leak or other memory management problems. We check this by `asan` which is enabled by default in the `Debug` mode.
