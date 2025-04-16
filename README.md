@@ -106,6 +106,8 @@ You may fail on some tests. If their name are all start with `Project`, don't wo
 
 ### Project 1
 
+See the branch `Project1`.
+
 You should only modify `src/storage/art.cpp` and `src/include/storage/art.hpp`, and pass all `Project1ArtIndexMVCC` tests if you complete the whole project.
 
 **Notice:** The basic version does not store row id in the index, but in the final version, `LookupKey` and `ScanRange` should returns row id instead of key itself. You can choose a reasonable point to implement it. (Suggestion: When implementing the version link.)
@@ -140,6 +142,8 @@ For each test, you'll get the whole score if you pass the test within reasonable
 12. LongVersionChain_RandomTs_RangeQuery: Require ALL task. Note that this test have a large number of version link updates and range queries.
 
 ### Project 2
+
+See the branch `Project2`.
 
 You should at least modify `src/storage/art.cpp`, `src/concurrency/version_link.cpp`, `src/concurrency/transaction_manager.cpp`, `src/execution/execution_common.cpp` and the header file corresponding to them. You should move your version links to `src/concurrency/version_link.cpp` so that other parts of the database can use it.
 
