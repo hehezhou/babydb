@@ -13,7 +13,7 @@
 namespace babydb {
 
 class Catalog;
-class ConfigGroup;
+struct ConfigGroup;
 class TransactionManager;
 class Transaction;
 

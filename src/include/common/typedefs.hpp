@@ -16,8 +16,8 @@ const data_t DATA_MAX = INT64_MAX;
 //! babydb's index type
 typedef uint64_t idx_t;
 
-const std::string INVALID_NAME = "";
-const idx_t INVALID_ID = static_cast<idx_t>(-1);
+[[maybe_unused]] const std::string INVALID_NAME = "";
+[[maybe_unused]] const idx_t INVALID_ID = static_cast<idx_t>(-1);
 
 struct RangeInfo {
     data_t start;
