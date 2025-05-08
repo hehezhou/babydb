@@ -4,7 +4,7 @@ namespace babydb {
 
 class Transaction;
 class Catalog;
-class ConfigGroup;
+struct ConfigGroup;
 struct ExecutionContext {
     Transaction &txn_;
     const Catalog &catalog_;

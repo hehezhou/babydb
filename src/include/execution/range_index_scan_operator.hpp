@@ -24,7 +24,7 @@ public:
 
     void SelfCheck() override;
 
-    virtual std::string BindTableName() { return table_name_; }
+    std::string BindTableName() override { return table_name_; }
 
 private:
     std::string table_name_;
