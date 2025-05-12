@@ -65,9 +65,11 @@ void HashJoinOperator::SelfCheck() {
 
 void HashJoinOperator::BuildHashTable() {
     auto &build_child_operator = child_operators_[1];
+    OperatorState state = HAVE_MORE_OUTPUT;
     Chunk build_chunk;
     const idx_t build_key_attr = build_child_operator->GetOutputSchema().GetKeyAttrs({build_column_name_})[0];
-    while (build_child_operator->Next(build_chunk) != EXHAUSETED) {
+    while (state != EXHAUSETED) {
+        state = build_child_operator->Next(build_chunk);
         for (auto &chunk_row : build_chunk) {
             auto &tuple = chunk_row.first;
             hash_table_.insert(std::make_pair(tuple.KeyFromTuple(build_key_attr), tuple));
