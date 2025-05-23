@@ -14,6 +14,7 @@ namespace babydb {
 
 class Catalog;
 struct ConfigGroup;
+class Operator;
 class TransactionManager;
 class Transaction;
 
@@ -52,6 +53,8 @@ public:
     ExecutionContext GetExecutionContext(const std::shared_ptr<Transaction> &txn) {
         return ExecutionContext{*txn, GetCatalog(), GetConfig()};
     }
+
+    void OptimizeJoinPlan(std::shared_ptr<Operator> &join_plan);
 
 private:
     std::unique_ptr<Catalog> catalog_;

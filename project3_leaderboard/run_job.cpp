@@ -5,8 +5,9 @@
 #include "execution/insert_operator.hpp"
 #include "execution/value_operator.hpp"
 
-#include <iostream>
+#include <chrono>
 #include <fstream>
+#include <iostream>
 
 using namespace babydb;
 
@@ -94,7 +95,7 @@ static std::shared_ptr<Operator> BuildTree(std::ifstream &data_file, ExecutionCo
     }
 }
 
-static void Run(std::string data_path, std::string test_name) {
+static int64_t Run(std::string data_path, std::string test_name) {
     std::ifstream data_file(data_path, std::ios::binary | std::ios::in);
     BabyDB db_instance;
     BuildTable(data_file, db_instance);
@@ -106,6 +107,8 @@ static void Run(std::string data_path, std::string test_name) {
     data_file.seekg(0, std::ios::beg);
     auto op_tree = BuildTree(data_file, exec_ctx);
 
+    auto start = std::chrono::high_resolution_clock::now();
+    db_instance.OptimizeJoinPlan(op_tree);
     Chunk data_chunk;
     OperatorState state = OperatorState::HAVE_MORE_OUTPUT;
     idx_t total_size = 0;
@@ -115,8 +118,13 @@ static void Run(std::string data_path, std::string test_name) {
         state = op_tree->Next(data_chunk);
         total_size += data_chunk.size();
     }
+    auto end = std::chrono::high_resolution_clock::now();
     db_instance.Commit(*txn);
-    std::cout << test_name << ": " << (expect_size == total_size ? "correct" : "wrong") << "\n";
+
+    auto cost = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+    std::cout << test_name << ": " << (expect_size == total_size ? "correct" : "wrong") << " time: " << cost.count() / 1000000 << "ms\n";
+
+    return cost.count();
 }
 
 static std::vector<std::string> all_tests = {
@@ -137,7 +145,9 @@ int main(int argc, char **argv) {
             run_tests.push_back(argv[i]);
         }
     }
+    int64_t total_time = 0;
     for (auto test : run_tests) {
-        Run(data_path + "/" + test + ".data", test);
+        total_time += Run(data_path + "/" + test + ".data", test);
     }
+    std::cout << "Total time: " << total_time / 1000000 << "ms\n";
 }

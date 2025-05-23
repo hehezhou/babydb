@@ -59,4 +59,6 @@ void BabyDB::Abort(Transaction &txn) {
     txn_mgr_->Abort(txn);
 }
 
+void BabyDB::OptimizeJoinPlan(std::shared_ptr<Operator> &join_plan) {}
+
 }
