@@ -141,7 +141,7 @@ int main(int argc, char **argv) {
     if (argc == 2) {
         run_tests = all_tests;
     } else {
-        for (idx_t i = 2; i < argc; i++) {
+        for (int i = 2; i < argc; i++) {
             run_tests.push_back(argv[i]);
         }
     }
