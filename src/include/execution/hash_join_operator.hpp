@@ -36,7 +36,11 @@ private:
 
     std::string build_column_name_;
 
-    std::vector<Tuple> tuples_;
+    std::vector<data_t> tuples_;
+
+    idx_t tuple_count_;
+
+    idx_t width_;
 
     std::unordered_multimap<data_t, idx_t> pointer_table_;
 

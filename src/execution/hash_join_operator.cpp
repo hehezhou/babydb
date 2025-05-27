@@ -13,9 +13,9 @@ HashJoinOperator::HashJoinOperator(const ExecutionContext &exec_ctx,
       probe_column_name_(probe_column_name),
       build_column_name_(build_column_name) {}
 
-static Tuple UnionTuple(const Tuple &a, const Tuple &b) {
+static Tuple UnionTuple(const Tuple &a, const std::vector<data_t>::iterator &start, idx_t width) {
     Tuple result = a;
-    result.insert(result.end(), b.begin(), b.end());
+    result.insert(result.end(), start, start + width);
     return result;
 }
 
@@ -44,13 +44,17 @@ OperatorState HashJoinOperator::Next(Chunk &output_chunk) {
         buffer_ptr_++;
         auto match_range = pointer_table_.equal_range(probe_tuple.KeyFromTuple(probe_key_attr));
         for (auto match_ite = match_range.first; match_ite != match_range.second; match_ite++) {
-            output_chunk.push_back(std::make_pair(UnionTuple(probe_tuple, tuples_[match_ite->second]), INVALID_ID));
+            output_chunk.push_back(
+                std::make_pair(UnionTuple(probe_tuple, tuples_.begin() + match_ite->second, width_)
+                , INVALID_ID));
         }
     }
     return HAVE_MORE_OUTPUT;
 }
 
 void HashJoinOperator::SelfInit() {
+    tuple_count_ = 0;
+    width_ = child_operators_[1]->GetOutputSchema().size();
     tuples_.clear();
     pointer_table_.clear();
     buffer_.clear();
@@ -73,12 +77,15 @@ void HashJoinOperator::BuildHashTable() {
         state = build_child_operator->Next(build_chunk);
         for (auto &chunk_row : build_chunk) {
             auto &tuple = chunk_row.first;
-            tuples_.push_back(std::move(tuple));
+            tuples_.insert(tuples_.end(), tuple.begin(), tuple.end());
+            tuple_count_++;
         }
     }
-    pointer_table_.reserve(tuples_.size());
-    for (idx_t i = 0; i < pointer_table_.size(); i++) {
-        pointer_table_.insert(std::make_pair(tuples_[i].KeyFromTuple(build_key_attr), i));
+    // Since usually build side is much smaller than probe side, we reserve much more number of tuples
+    // to reduce the probe complexity
+    pointer_table_.reserve(tuple_count_ * 4);
+    for (idx_t i = 0; i < tuple_count_; i++) {
+        pointer_table_.insert(std::make_pair(tuples_[i * width_ + build_key_attr], i * width_));
     }
 }
 
