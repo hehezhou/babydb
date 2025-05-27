@@ -29,7 +29,7 @@ OperatorState HashJoinOperator::Next(Chunk &output_chunk) {
 
     auto &probe_child_operator = child_operators_[0];
     auto probe_key_attr = probe_child_operator->GetOutputSchema().GetKeyAttrs({probe_column_name_})[0];
-    while (output_chunk.size() < exec_ctx_.config_.CHUNK_SUGGEST_SIZE) {
+    while (output_size < exec_ctx_.config_.CHUNK_SUGGEST_SIZE) {
         if (buffer_ptr_ == buffer_.size() && !probe_child_exhausted_) {
             if (probe_child_operator->Next(buffer_) == EXHAUSETED) {
                 probe_child_exhausted_ = true;
@@ -53,6 +53,7 @@ OperatorState HashJoinOperator::Next(Chunk &output_chunk) {
                 output_chunk[output_size].first = UnionTuple(probe_tuple, tuples_.begin() + match_ite->second, width_);
                 output_chunk[output_size].second = INVALID_ID;
             }
+            output_size++;
         }
     }
     output_chunk.resize(output_size);
