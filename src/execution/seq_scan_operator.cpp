@@ -34,15 +34,16 @@ SeqScanOperator::SeqScanOperator(const ExecutionContext &exec_ctx, const std::st
     : Operator(exec_ctx, {}, output_schema), table_name_(table_name), fetch_columns_(fetch_columns) {}
 
 OperatorState SeqScanOperator::Next(Chunk &output_chunk) {
-    output_chunk.clear();
+    idx_t output_size = 0;
 
     auto &table = exec_ctx_.catalog_.FetchTable(table_name_);
     auto key_attrs = table.schema_.GetKeyAttrs(fetch_columns_);
 
     auto read_guard = table.GetReadTableGuard();
 
-    while (output_chunk.size() < exec_ctx_.config_.CHUNK_SUGGEST_SIZE) {
+    while (output_size < exec_ctx_.config_.CHUNK_SUGGEST_SIZE) {
         if (next_row_id >= read_guard.Rows().size()) {
+            output_chunk.resize(output_size);
             return EXHAUSETED;
         }
         auto& [tuple, meta] = read_guard.Rows()[next_row_id];
@@ -51,9 +52,16 @@ OperatorState SeqScanOperator::Next(Chunk &output_chunk) {
         if (meta.is_deleted_) {
             continue;
         }
-        output_chunk.emplace_back(tuple.KeysFromTuple(key_attrs), next_row_id - 1);
+        if (output_size == output_chunk.size()) {
+            output_chunk.emplace_back(tuple.KeysFromTuple(key_attrs), next_row_id - 1);
+        } else {
+            output_chunk[output_size].first = tuple.KeysFromTuple(key_attrs);
+            output_chunk[output_size].second = next_row_id - 1;
+        }
+        output_size++;
     }
 
+    output_chunk.resize(output_size);
     return HAVE_MORE_OUTPUT;
 }
 

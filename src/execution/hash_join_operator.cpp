@@ -20,7 +20,7 @@ static Tuple UnionTuple(const Tuple &a, const std::vector<data_t>::iterator &sta
 }
 
 OperatorState HashJoinOperator::Next(Chunk &output_chunk) {
-    output_chunk.clear();
+    idx_t output_size = 0;
 
     if (!hash_table_build_) {
         hash_table_build_ = true;
@@ -37,6 +37,7 @@ OperatorState HashJoinOperator::Next(Chunk &output_chunk) {
             buffer_ptr_ = 0;
         }
         if (buffer_ptr_ == buffer_.size()) {
+            output_chunk.resize(output_size);
             return EXHAUSETED;
         }
 
@@ -44,11 +45,17 @@ OperatorState HashJoinOperator::Next(Chunk &output_chunk) {
         buffer_ptr_++;
         auto match_range = pointer_table_.equal_range(probe_tuple.KeyFromTuple(probe_key_attr));
         for (auto match_ite = match_range.first; match_ite != match_range.second; match_ite++) {
-            output_chunk.push_back(
-                std::make_pair(UnionTuple(probe_tuple, tuples_.begin() + match_ite->second, width_)
-                , INVALID_ID));
+            if (output_size == output_chunk.size()) {
+                output_chunk.push_back(
+                    std::make_pair(UnionTuple(probe_tuple, tuples_.begin() + match_ite->second, width_)
+                    , INVALID_ID));
+            } else {
+                output_chunk[output_size].first = UnionTuple(probe_tuple, tuples_.begin() + match_ite->second, width_);
+                output_chunk[output_size].second = INVALID_ID;
+            }
         }
     }
+    output_chunk.resize(output_size);
     return HAVE_MORE_OUTPUT;
 }
 
