@@ -105,9 +105,9 @@ static int64_t Run(std::string data_path, std::string test_name) {
     auto txn = db_instance.CreateTxn();
     auto exec_ctx = db_instance.GetExecutionContext(txn);
     data_file.seekg(0, std::ios::beg);
-    auto op_tree = BuildTree(data_file, exec_ctx);
 
     auto start = std::chrono::high_resolution_clock::now();
+    auto op_tree = BuildTree(data_file, exec_ctx);
     db_instance.OptimizeJoinPlan(op_tree);
     Chunk data_chunk;
     OperatorState state = OperatorState::HAVE_MORE_OUTPUT;
