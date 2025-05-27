@@ -36,7 +36,9 @@ private:
 
     std::string build_column_name_;
 
-    std::unordered_multimap<data_t, Tuple> hash_table_;
+    std::vector<Tuple> tuples_;
+
+    std::unordered_multimap<data_t, idx_t> pointer_table_;
 
     Chunk buffer_;
 

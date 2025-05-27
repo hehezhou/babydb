@@ -42,16 +42,17 @@ OperatorState HashJoinOperator::Next(Chunk &output_chunk) {
 
         auto &probe_tuple = buffer_[buffer_ptr_].first;
         buffer_ptr_++;
-        auto match_range = hash_table_.equal_range(probe_tuple.KeyFromTuple(probe_key_attr));
+        auto match_range = pointer_table_.equal_range(probe_tuple.KeyFromTuple(probe_key_attr));
         for (auto match_ite = match_range.first; match_ite != match_range.second; match_ite++) {
-            output_chunk.push_back(std::make_pair(UnionTuple(probe_tuple, match_ite->second), INVALID_ID));
+            output_chunk.push_back(std::make_pair(UnionTuple(probe_tuple, tuples_[match_ite->second]), INVALID_ID));
         }
     }
     return HAVE_MORE_OUTPUT;
 }
 
 void HashJoinOperator::SelfInit() {
-    hash_table_.clear();
+    tuples_.clear();
+    pointer_table_.clear();
     buffer_.clear();
     buffer_ptr_ = 0;
     probe_child_exhausted_ = false;
@@ -72,8 +73,12 @@ void HashJoinOperator::BuildHashTable() {
         state = build_child_operator->Next(build_chunk);
         for (auto &chunk_row : build_chunk) {
             auto &tuple = chunk_row.first;
-            hash_table_.insert(std::make_pair(tuple.KeyFromTuple(build_key_attr), tuple));
+            tuples_.push_back(std::move(tuple));
         }
+    }
+    pointer_table_.reserve(tuples_.size());
+    for (idx_t i = 0; i < pointer_table_.size(); i++) {
+        pointer_table_.insert(std::make_pair(tuples_[i].KeyFromTuple(build_key_attr), i));
     }
 }
 
