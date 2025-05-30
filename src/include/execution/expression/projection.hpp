@@ -19,6 +19,7 @@ public:
 public:
     Projection(const Schema &keys_schema, const std::string &output_name)
         : keys_schema_(keys_schema), output_name_(output_name) {}
+    virtual ~Projection() {}
     //! returns the calculated data
     data_t Calc(const Tuple &tuple) const {
         return CalcInternal(tuple.KeysFromTuple(key_attrs_));
@@ -46,6 +47,8 @@ public:
     UnitProjection(const std::string &column_name, const std::string &output_name)
         : Projection({column_name}, output_name) {}
 
+    ~UnitProjection() override {}
+
 private:
     data_t CalcInternal(Tuple &&check_keys) const override {
         return check_keys[0];
@@ -66,6 +69,8 @@ public:
 
     UDProjection(const std::string &column_name, const std::function<data_t(Tuple&&)> &udf)
         : Projection({column_name}, column_name), udf_(udf) {}
+
+    ~UDProjection() override {}
 
 private:
     data_t CalcInternal(Tuple &&check_keys) const override {
