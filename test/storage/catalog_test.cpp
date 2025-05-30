@@ -15,7 +15,7 @@ public:
 private:
     void InsertEntry(const data_t &, idx_t) override {};
     void EraseEntry(const data_t &, idx_t) override {};
-    idx_t ScanKey(const data_t &) { return INVALID_ID; };
+    idx_t ScanKey(const data_t &) override { return INVALID_ID; };
 };
 
 TEST(CatalogTest, BasicTest) {
